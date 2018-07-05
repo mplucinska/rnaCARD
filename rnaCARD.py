@@ -1,0 +1,403 @@
+
+# wersja 10.01.2018
+# funkcje: wyszukiwanie pasujacych spinek, zamykajacych motywy stemow oraz nakladajacch sie stemow
+
+import math
+import argparse
+import subprocess
+import os
+import sys
+
+class Arguments:
+	def __init__(self):
+		fasta = ""
+		cond_1 = ""
+		cond_2 = ""
+		i = ""
+		m = False
+		n = False
+		out = ""
+		overlap_small = 0.6
+
+	def parse(self):
+		parser = argparse.ArgumentParser()
+		parser.add_argument("-i", help = "input file", required = True, type = str)
+		args = parser.parse_args()
+		self.i = args.i
+		self.overlap_small = 0.6
+
+class Structure:
+	def _init_(self):
+		self.shape = "" 	#structure in abstract shape notation (level 5)
+		self.bracket = ""	#structure in dot-bracket notation
+		self.shape_position = []	#start and end position for each element in shape [i] = [start, end]
+		self.domains = []			#shape domains with loop sequences
+		self.domains_position = []
+		self.sequence = ""
+		self.mismatched_domains = []	#domains which appears only in one structure 
+		self.subdomain_shape_position = []
+		self.subdomain_match = []
+		self.mismatch = []
+		self.match = []
+		self.closed_motifs = []
+		self.str_id = ''
+	def find_bracket(self,p):
+		c_o = 0
+		c_c = 0
+		x = "Z"
+		if self.bracket[p] == "(":
+			for i in range(p , len(self.bracket) + 1):
+				if self.bracket[i] == "(":
+					c_o += 1
+				elif self.bracket[i] == ")":
+					c_o = c_o - 1
+				if c_o == 0:
+					x = i
+					break
+		elif self.bracket[p] == ")":
+			for i in list(reversed(range(0, p + 1))):
+				if self.bracket[i] == ")":
+					c_o += 1
+				elif self.bracket[i] == "(":
+					c_o -= 1
+				if c_o == 0:
+					x = i
+					break
+		return x
+	def new_stem(self, a, b, a_p, b_p):
+		lvl = 5
+		sep = False
+		for i in range(a, b + 1):
+			if self.bracket[i] != ".":
+				if self.bracket[i] != self.bracket[a]:
+					sep = True
+					break
+		return sep
+	def bracket_to_shape(self):
+		self.shape = ""
+		self.shape_position = {}
+		st = 0
+		beg = False 
+		cl = False
+		prev_i = 0
+		lvl = 5
+
+		for i in range(0, len(self.bracket)):
+			if self.bracket[i] == "(":
+				if beg == False:
+					self.shape += "["
+					st = i
+					self.shape_position[len(self.shape) - 1] = [i]
+					beg = True
+					#print prev_pair
+				elif beg == True:
+					akt_pair = self.find_bracket(i)
+					prev_pair = self.find_bracket(prev_i)
+					if self.new_stem(akt_pair, prev_pair,prev_i, i) == True:
+						beg = False
+						self.shape_position[len(self.shape)-1].append(prev_i)
+						self.shape += "["
+						st = i
+						self.shape_position[len(self.shape) - 1] = [i]
+						beg = True
+						prev_pair = self.find_bracket(i)
+				if cl == True:
+					cl = False
+					self.shape_position[len(self.shape)-2].append(prev_i)
+
+			elif self.bracket[i] == ")":
+				if beg == True:
+						#print i, prev_i
+						beg = False
+						self.shape_position[len(self.shape)-1].append(prev_i)
+				if cl == False:
+					self.shape += "]"
+					self.shape_position[len(self.shape) - 1] = [i]
+					cl = True
+					akt_pair = self.find_bracket(i)
+					prev_pair = self.find_bracket(prev_i)
+				elif cl == True:
+					akt_pair = self.find_bracket(i)
+					prev_pair = self.find_bracket(prev_i)
+					if self.new_stem(akt_pair, prev_pair, prev_i, i) == True:
+						cl = False
+						self.shape_position[len(self.shape)-1].append(prev_i)						
+						self.shape += "]"
+						self.shape_position[len(self.shape) - 1] = [i]
+						cl = True
+			#print self.bracket[i], i
+			if self.bracket[i] !=  ".":
+				prev_i = i
+		try:
+			self.shape_position[len(self.shape)-1].append(prev_i)
+		except KeyError:
+			return False
+	def get_domains(self): #dividing shape into domains
+		o = 0
+		c = 0
+		poz = 0
+		o_p = 0
+		c_p = 0
+		loops = self.loop_seq()
+		loop_num = 0
+		self.domains_position =[]
+		self.domains = []
+		op = False
+		for i, j in enumerate(self.shape):
+			if j == "[" :
+				if self.shape[i + 1] == "[":
+					self.domains.append("[")
+					self.domains_position.append(self.shape_position[i])
+				else:
+					op = True
+			elif j == "]":
+				if op == True:
+					dom = "[" + loops[loop_num] + "]"
+					self.domains.append(dom)
+					self.domains_position.append([self.shape_position[i - 1][0], self.shape_position[i][1]])
+					loop_num += 1
+					op = False
+				else:
+					self.domains.append("]")
+					self.domains_position.append(self.shape_position[i])
+	def loop_seq(self):
+		o = False
+		op =0
+		c = False
+		cp = 0
+		d = False
+		p = 0
+		sek_list = []
+		for i in self.bracket:
+			if i == '(':
+				o = True
+				op = p
+			elif o == True and i == ')':
+				c = True
+				cp =p
+			if o == True and c ==True:
+				sek_list.append(self.sequence[op + 1 : cp])
+				o = False
+				c = False
+			p += 1
+		return sek_list
+
+class Transcript:
+	def _init_(self):
+		self.id = ""
+		self.sequence = ""
+		self.domain_match = []
+		self.mismatch_positions = []
+		self.match_positions = []
+		self.match_positions_small = []
+		self.closed_match_position = []
+	def input_a(self):
+		with open(arg.i) as input_f:
+			for i in input_f:
+				if i.startswith(">"):
+					self.id = i.strip()[1:]
+					self.sequence = input_f.next().strip().split()[1]
+					s1 = Structure()
+					line = input_f.next().strip().split()	# structure 1
+					s1.bracket = line[1]
+					s1.str_id = line[0]
+					s2 = Structure()
+					line = input_f.next().strip().split()	# structure 2
+					s2.bracket = line[1]
+					s2.str_id = line[0]
+
+					s1.sequence = self.sequence
+					s2.sequence = self.sequence
+					#print self.id, s2.str_id
+					self.match_positions = []
+					self.match_positions_small = []
+
+					if s1.bracket_to_shape() != False and s2.bracket_to_shape() != False:
+						if s1.bracket != s2.bracket:
+							s1.get_domains() #returns s1.domains + s1.domains_position
+							s2.get_domains()
+							self.get_matched_hairpins_1(s1,s2) # pasujace hairpiny
+							#self.get_matched_hairpins_2(s1,s2)
+							self.get_matched_closing_stems(s1,s2) #stemy zamykajace dopasowane motywy
+							self.get_matched_similar_stems(s1,s2) # podobne stemy
+							self.print_match(s1,s2)
+							#self.print_mismatch(s1,s2)
+						else:
+							print "takie same!"
+	def print_match(self, s1, s2):
+		# zakres motywu dla kazdego
+		#match_string_s1 = list("0" * len(self.sequence))
+		#match_string_s2 = list("0" * len(self.sequence))
+		match_string = list("0" * len(self.sequence))
+		start = False
+		for i,n in enumerate(s1.pairs):
+			if n != 'x' and start == False:
+				start = True
+				pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
+				pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
+			elif n == 'x' and start == True:
+				self.match_positions.append([pos_start, pos_end])
+				for k in range(pos_start, pos_end + 1):
+					match_string[int(k)] = '1'
+				start = False
+			elif start == True and n != 'x':
+				if n != s1.pairs[i - 1] + 1:
+					self.match_positions.append([pos_start, pos_end])
+					for k in range(pos_start, pos_end + 1):
+						match_string[int(k)] = '1'
+						start = True
+						pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
+				pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]			
+
+		if start == True:
+			self.match_positions.append([pos_start, pos_end])
+			for k in range(pos_start, pos_end + 1):
+				pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
+				match_string[int(k)] = '1'
+
+		print self.id
+		print self.sequence
+		print s1.bracket
+		print s2.bracket
+		print " ".join(match_string)
+	def print_mismatch(self, s1, s2):
+		for i, n in enumerate(s1.pairs):
+			if n == 'x':
+				if len(s1.domains[i]) > 1:
+					print s1.domains[i]
+	def get_matched_closing_stems(self, s1, s2):
+		added_new = True
+		while added_new == True:
+			start = False
+			added_new = False
+			for i, n in enumerate(s1.pairs):
+				if n == 'x':
+					if start == False and i < len(s1.pairs) - 1:
+						if s1.pairs[i + 1] != "x":
+							start_s1 = i
+							start_s2 = s1.pairs[i + 1] - 1
+							if s1.domains[start_s1] == "[" and s2.domains[start_s2] == "[":
+								start = True
+					elif start == True:
+						if s1.pairs[i] == "x":
+							if s1.domains[i] == "]" and s2.domains[s1.pairs[i - 1] + 1] == "]":
+								end_s1 = i
+								end_s2 = s1.pairs[i - 1] + 1
+								start = False
+								s1.pairs[start_s1] = start_s2
+								s2.pairs[start_s2] = start_s1
+								s1.pairs[end_s1] = end_s2
+								s2.pairs[end_s2] = end_s1
+								added_new = True
+								#print "".join(s1.domains[start_s1 : end_s1 + 1])
+								#print "".join(s2.domains[start_s2 : end_s2 + 1])
+							elif s1.domains[i] == "[" and s2.domains[s1.pairs[i - 1] + 1] == "[":
+								if s1.pairs[i + 1] != "x":
+									start_s1 = i
+									start_s2 = s1.pairs[i - 1] + 1
+									start = True
+								else:
+									start = False
+							else:
+								start = False
+	def find_pair(self, s, n):
+		op = 0
+		cl = 0
+		for i in range(n, len(s.domains)):
+			if s.domains[i] == "[":
+				op += 1
+			elif s.domains[i] == "]":
+				cl += 1
+			if op == cl:
+				return i		
+	def get_matched_similar_stems(self, s1, s2):
+		for i, n in enumerate(s1.pairs):
+			if n == 'x':
+				if s1.domains[i] == "[":
+					pos_1 = s1.domains_position[i]
+					for j, m in enumerate(s2.domains):
+						pos_2 = s2.domains_position[j]
+						if m == "[" and len(set(range(pos_1[0], pos_1[1])).intersection(range(pos_2[0], pos_2[1]))) > 0:
+							pair_1 = self.find_pair(s1, i)
+							pair_2 = self.find_pair(s2, j)
+							pos_1_cl = s1.domains_position[pair_1]
+							pos_2_cl = s2.domains_position[pair_2]
+							if len(set(range(pos_1_cl[0], pos_1_cl[1])).intersection(range(pos_2_cl[0], pos_2_cl[1]))) > 0:
+								s1.pairs[i] = j
+								s1.pairs[pair_1] = pair_2
+								s2.pairs[j] = i
+								s2.pairs[pair_2] = pair_1
+	def get_matched_hairpins_1(self,s1,s2):
+		s1.pairs = ['x']*len(s1.domains)
+		s2.pairs = ['x']*len(s2.domains)
+		print s1.domains
+		print s2.domains
+		for n, i in enumerate(s1.domains):
+			if len(i) > 1:
+				for m, j in enumerate(s2.domains):
+					if len(j) > 1:
+						if self.loops_overlap(s1,s2,i,j, s1.domains_position[n], s2.domains_position[m]):
+							#print i, j
+							#print s2.bracket[s2.domains_position[m][0] : s2.domains_position[m][1] + 1]
+							s1.domains[n] = s2.domains[m]
+							s1.pairs[n] = m
+							s2.pairs[m] = n
+		print s1.pairs
+		print s2.pairs
+	def get_matched_hairpins_2(self,s1,s2):
+		s1.pairs = ['x']*len(s1.domains)
+		s2.pairs = ['x']*len(s2.domains)
+		print s1.domains
+		print s2.domains
+		for n, i in enumerate(s1.domains):
+			if len(i) > 1:
+				for m, j in enumerate(s2.domains):
+					if i == j :
+						print s2.bracket[s2.domains_position[m][0] : s2.domains_position[m][1] + 1]
+						s1.pairs[n] = m
+						s2.pairs[m] = n
+		print s1.pairs
+		print s2.pairs
+	def loops_overlap(self, s1, s2, a, b, a_pos, b_pos):
+		if a == b:
+			if len(set(range(a_pos[0], a_pos[1])).intersection(range(b_pos[0], b_pos[1]))) > 0:
+				return True
+		else:
+			start_1 = "A"
+			end_1 = "A"
+			start_2 = "A"
+			end_2 = "A"
+			for j in range(a_pos[0], a_pos[1] + 1):
+				if s1.bracket[j] == "(":
+					start_1 = j + 1 
+				elif s1.bracket[j] == ")":
+					end_1 = j - 1
+					break
+			for j in range(b_pos[0], b_pos[1] + 1):
+				if s2.bracket[j] == "(":
+					start_2 = j + 1 
+				elif s2.bracket[j] == ")":
+					end_2 = j - 1
+					break
+			if start_1 != "A" and start_2 != "A" and  end_1 != "A" and end_2 != "A":
+				if end_1 - start_1 < end_2 - start_2:
+					small_loop = end_1 - start_1
+				else:
+					small_loop = end_2 - start_2
+				min_overlap = small_loop * arg.overlap_small
+				if start_2 < end_1 and start_2 > start_1 and end_2 > end_1:
+					if end_1 - start_2 + 1 >= min_overlap + 1:
+						return True
+				elif start_1 < end_2 and start_1 > start_2 and end_1 > end_2:
+					if end_2 - start_1 + 1 >= min_overlap + 1:
+						return True
+				elif start_2 > start_1 and end_2 < end_1:
+					return True
+				elif start_1 > start_2 and end_1 < end_2:
+					return True
+			else:
+				return False
+
+arg = Arguments()
+arg.parse()
+Transcript().input_a()
