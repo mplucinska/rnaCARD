@@ -8,6 +8,7 @@ import subprocess
 import os
 import sys
 
+
 class Arguments:
 	def __init__(self):
 		fasta = ""
@@ -22,9 +23,19 @@ class Arguments:
 	def parse(self):
 		parser = argparse.ArgumentParser()
 		parser.add_argument("-i", help = "input file", required = True, type = str)
+		parser.add_argument("--mo", help = "minimum overlap", type = str, default = 0.6)
+		parser.add_argument("--cs", help = "closing stems", action='store_true', required = False)
+		parser.add_argument("--os", help = "overlaping stems", action='store_true', required = False)
+		parser.add_argument("--match", help = "find matching motifs", action='store_true', required = False)
+		parser.add_argument("--mismatch", help = "find mismatching motifs", action='store_true', required = False)
+
 		args = parser.parse_args()
 		self.i = args.i
-		self.overlap_small = 0.6
+		self.overlap_small = args.mo
+		self.cs = args.cs
+		self.os = args.os
+		self.match = args.match
+		self.mismatch = args.mismatch
 
 class Structure:
 	def _init_(self):
@@ -216,12 +227,22 @@ class Transcript:
 						if s1.bracket != s2.bracket:
 							s1.get_domains() #returns s1.domains + s1.domains_position
 							s2.get_domains()
-							self.get_matched_hairpins_1(s1,s2) # pasujace hairpiny
-							#self.get_matched_hairpins_2(s1,s2)
-							self.get_matched_closing_stems(s1,s2) #stemy zamykajace dopasowane motywy
-							self.get_matched_similar_stems(s1,s2) # podobne stemy
-							self.print_match(s1,s2)
-							#self.print_mismatch(s1,s2)
+							#matching motifs
+							if arg.match:
+								self.get_matched_hairpins_1(s1,s2) # pasujace hairpiny
+								#self.get_matched_hairpins_2(s1,s2)
+								if arg.cs:
+									self.get_matched_closing_stems(s1,s2) #stemy zamykajace dopasowane motywy
+								if arg.os:
+									self.get_matched_similar_stems(s1,s2) # podobne stemy
+								self.print_match(s1,s2)
+								#self.print_mismatch(s1,s2)
+							#mismatching motif
+							elif arg.mismatch:
+								self.get_matched_hairpins_1(s1,s2)
+								#self.get_matched_closing_stems(s1,s2)
+								#self.get_matched_similar_stems(s1,s2)
+								self.print_mismatch(s1,s2)
 						else:
 							print "takie same!"
 	def print_match(self, s1, s2):
@@ -255,16 +276,40 @@ class Transcript:
 				pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
 				match_string[int(k)] = '1'
 
-		print self.id
-		print self.sequence
-		print s1.bracket
-		print s2.bracket
-		print " ".join(match_string)
+		#print self.id
+		#print self.sequence
+		#print s1.bracket
+		#print s2.bracket
+		#print " ".join(match_string)
 	def print_mismatch(self, s1, s2):
-		for i, n in enumerate(s1.pairs):
-			if n == 'x':
-				if len(s1.domains[i]) > 1:
-					print s1.domains[i]
+
+		mismatch_string = list("0" * len(self.sequence))
+		start = False
+		for i,n in enumerate(s1.pairs):
+			if n != 'x' and start == False:
+				start = True
+				pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
+				pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
+			elif n == 'x' and start == True:
+				self.match_positions.append([pos_start, pos_end])
+				for k in range(pos_start, pos_end + 1):
+					match_string[int(k)] = '1'
+				start = False
+			elif start == True and n != 'x':
+				if n != s1.pairs[i - 1] + 1:
+					self.match_positions.append([pos_start, pos_end])
+					for k in range(pos_start, pos_end + 1):
+						match_string[int(k)] = '1'
+						start = True
+						pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
+				pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]			
+
+		if start == True:
+			self.match_positions.append([pos_start, pos_end])
+			for k in range(pos_start, pos_end + 1):
+				pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
+				match_string[int(k)] = '1'
+
 	def get_matched_closing_stems(self, s1, s2):
 		added_new = True
 		while added_new == True:
