@@ -24,7 +24,7 @@ class Arguments:
 		parser = argparse.ArgumentParser()
 		parser.add_argument("-i", help = "input file", required = True, type = str)
 		parser.add_argument("--mo", help = "minimum overlap", type = str, default = 0.6)
-		parser.add_argument("--cs", help = "closing stems", action='store_true', required = False)
+		#parser.add_argument("--cs", help = "closing stems", action='store_true', required = False)
 		parser.add_argument("--os", help = "overlaping stems", action='store_true', required = False)
 		parser.add_argument("--match", help = "find matching motifs", action='store_true', required = False)
 		parser.add_argument("--mismatch", help = "find mismatching motifs", action='store_true', required = False)
@@ -32,7 +32,7 @@ class Arguments:
 		args = parser.parse_args()
 		self.i = args.i
 		self.overlap_small = args.mo
-		self.cs = args.cs
+		#self.cs = args.cs
 		self.os = args.os
 		self.match = args.match
 		self.mismatch = args.mismatch
@@ -241,14 +241,16 @@ class Transcript:
 							elif arg.mismatch:
 								self.get_matched_hairpins_1(s1,s2)
 								#self.get_matched_closing_stems(s1,s2)
-								#self.get_matched_similar_stems(s1,s2)
+								if arg.os:
+									self.get_matched_similar_stems(s1,s2)
 								self.print_mismatch(s1,s2)
-						else:
-							print "takie same!"
+						#else:
+						#	print "takie same!"
 	def print_match(self, s1, s2):
 
 		match_string = list("0" * len(self.sequence))
 		start = False
+
 		for i,n in enumerate(s1.pairs):
 			if n != 'x' and start == False:
 				#if s1.domains_position[i][1] == s2.domains_position[n][1]:
@@ -258,9 +260,19 @@ class Transcript:
 
 				if s1.domains_position[i][0] == s2.domains_position[n][0]:
 					start = True
-					pos_start = s1.domains_position[i][0] 
-					pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
-
+					pos_start = s1.domains_position[i][0]
+					if s1.domains_position[i][1] == s2.domains_position[n][1]:
+						pos_end = s1.domains_position[i][1]
+					else:
+						if i == "[":
+							pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] > s2.domains_position[n][1] else s2.domains_position[n][1]
+						else:
+							pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
+						
+						self.match_positions.append([pos_start, pos_end])
+						for k in range(pos_start, pos_end + 1):
+							match_string[int(k)] = '1'
+						start = False
 				else:
 					#dodac starty motyw 
 					if s1.domains_position[i][1] == s2.domains_position[n][1]:
@@ -269,7 +281,6 @@ class Transcript:
 							pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] < s2.domains_position[n][0] else s2.domains_position[n][0]
 						else:
 							pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
-
 						pos_end = s1.domains_position[i][1]
 
 					else:
@@ -301,7 +312,7 @@ class Transcript:
 						self.match_positions.append([pos_start, pos_end])
 						for k in range(pos_start, pos_end + 1):
 							match_string[int(k)] = '1'
-						pos_start = s1.domains_position[i][0] 
+						pos_start = s1.domains_position[i][0]
 					#else:
 					if s1.domains_position[i][0] == s2.domains_position[n][0]:
 						start = True
@@ -313,6 +324,7 @@ class Transcript:
 					else:
 						#dodac starty motyw
 						self.match_positions.append([pos_start, pos_end])
+
 						for k in range(pos_start, pos_end + 1):
 							match_string[int(k)] = '1'
 						if i == "[":
@@ -341,51 +353,86 @@ class Transcript:
 								match_string[int(k)] = '1'
 							start = False
 		if start == True:
-			#if self.id[:-4] == 'ENST00000335510':
-			#	print pos_start, pos_end
 			self.match_positions.append([pos_start, pos_end])
 			for k in range(pos_start, pos_end + 1):
 				#pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
 				match_string[int(k)] = '1'
 								
-		#if self.id[:-4] == 'ENST00000295663':
+		#if self.id[:-4] == 'ENST00000334371':
 		#	print match_string
 		
 		print ">", self.id
 		print self.sequence
 		print s1.bracket
 		print s2.bracket
-		print " ".join(match_string)
-		
+		print " ".join(match_string)	
 	def print_mismatch(self, s1, s2):
-
+		#print s1.pairs
+		#print s2.pairs
+		#print s1.domains
+		#print s2.domains
 		mismatch_string = list("0" * len(self.sequence))
 		start = False
-		for i,n in enumerate(s1.pairs):
-			if n != 'x' and start == False:
-				start = True
-				pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
-				pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
-			elif n == 'x' and start == True:
-				self.match_positions.append([pos_start, pos_end])
-				for k in range(pos_start, pos_end + 1):
-					match_string[int(k)] = '1'
-				start = False
-			elif start == True and n != 'x':
-				if n != s1.pairs[i - 1] + 1:
-					self.match_positions.append([pos_start, pos_end])
-					for k in range(pos_start, pos_end + 1):
-						match_string[int(k)] = '1'
-						start = True
-						pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
-				pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]			
+		self.mismatch_positions = []
 
-		if start == True:
-			self.match_positions.append([pos_start, pos_end])
+		if s1.pairs[0] != 0 and s2.pairs[0] != 0:
+			prev_match_1 = -1
+			prev_match_2 = -1
+			start = True
+		for i,n in enumerate(s1.pairs):
+			if n != 'x':
+				if start == False:
+					prev_match_1 = i
+					prev_match_2 = n
+					start = True
+				elif start == True:
+					if n > prev_match_2 + 1 and i == prev_match_1 + 1:
+						#print prev_match_2 + 1, n - 1, "s2"
+						pos_start = s2.domains_position[prev_match_2 + 1][0]
+						pos_end = s2.domains_position[n - 1][1]
+						self.mismatch_positions.append([pos_start, pos_end])
+						for k in range(pos_start, pos_end + 1):
+							mismatch_string[int(k)] = '1'			
+					elif n == prev_match_2 + 1 and i > prev_match_1 + 1:
+						#print prev_match_1 + 1, i - 1, "s1"
+						pos_start = s1.domains_position[prev_match_1 + 1][0]
+						pos_end = s1.domains_position[i - 1][1]
+						self.mismatch_positions.append([pos_start, pos_end])
+						for k in range(pos_start, pos_end + 1):
+							mismatch_string[int(k)] = '1'
+					elif n > prev_match_2 + 1 and i > prev_match_1 + 1:
+						#print prev_match_1, prev_match_2, i - 1, n - 1
+						pos_start = s1.domains_position[prev_match_1 + 1][0] if s1.domains_position[prev_match_1 + 1][0] < s2.domains_position[prev_match_2 + 1][0] else s2.domains_position[prev_match_2 + 1][0]
+						pos_end = s1.domains_position[i - 1][1] if s1.domains_position[i - 1][1] > s2.domains_position[n - 1][1] else s2.domains_position[n - 1][1]
+						self.mismatch_positions.append([pos_start, pos_end])
+						for k in range(pos_start, pos_end + 1):
+							mismatch_string[int(k)] = '1'
+					prev_match_2 = n
+					prev_match_1 = i
+		if n == 'x':
+			try:
+				pos_start = s1.domains_position[prev_match_1 + 1][0] if s1.domains_position[prev_match_1 + 1][0] < s2.domains_position[prev_match_2 + 1][0] else s2.domains_position[prev_match_2 + 1][0]
+			except IndexError:
+				try:
+					pos_start = s1.domains_position[prev_match_1][0] if s1.domains_position[prev_match_1][0] < s2.domains_position[prev_match_2 + 1][0] else s2.domains_position[prev_match_2 + 1][0]
+				except IndexError:
+					try:
+						pos_start = s1.domains_position[prev_match_1 + 1][0] if s1.domains_position[prev_match_1 + 1][0] < s2.domains_position[prev_match_2][0] else s2.domains_position[prev_match_2][0]
+					except IndexError:
+						pos_start = s1.domains_position[prev_match_1][0] if s1.domains_position[prev_match_1][0] < s2.domains_position[prev_match_2][0] else s2.domains_position[prev_match_2][0]
+
+			pos_end = s1.domains_position[-1][1] if s1.domains_position[- 1][1] > s2.domains_position[- 1][1] else s2.domains_position[- 1][1]
+			self.mismatch_positions.append([pos_start, pos_end])
 			for k in range(pos_start, pos_end + 1):
-				pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
-				match_string[int(k)] = '1'	
-	def stems_overlap(self, s1, s2, pos_1, pos_2):#chceck if pairs match or in range
+				mismatch_string[int(k)] = '1'
+
+		print ">", self.id
+		print self.sequence
+		print s1.bracket
+		print s2.bracket
+		print " ".join(mismatch_string)
+
+	def stems_overlap(self, s1, s2, pos_1, pos_2): #chceck if pairs match or in range
 		match = False
 		for i in range(pos_1[0], pos_1[1]):
 			pair_1 = s1.find_bracket(i)
