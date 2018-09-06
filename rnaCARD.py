@@ -308,7 +308,7 @@ class Transcript:
 		#print self.matched_motifs
 
 	def matched_motifs_output(self, s1, s2):
-		out_file = open("matched_motifs_out.txt", 'w')
+		out_file = open("matched_motifs_out.txt", 'a')
 		for i in self.matched_motifs:
 			pos = self.matched_motifs[i]
 			if len(pos) == 2:
@@ -322,7 +322,7 @@ class Transcript:
 			out_file.write(line_out)
 		out_file.close()
 		
-		out_file_2 = open("matched_whole_transcript.txt", 'w')
+		out_file_2 = open("matched_whole_transcript.txt", 'a')
 		out_file_2.write(self.id + "\t" + self.sequence + "\t" + s1.bracket + "\t" + s2.bracket + "\t" + " ".join(self.match_string) + "\n")
 
 		'''	
