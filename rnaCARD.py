@@ -205,6 +205,11 @@ class Transcript:
 		self.motifs_count = 0
 		self.matched_motifs = {}
 	def input_a(self):
+		out_file = open("www/working_dir/matched_motifs_out.txt", 'w')
+		out_file_2 = open("www/working_dir/matched_whole_transcripts.txt", 'w')
+		out_file.close()
+		out_file_2.close()
+
 		with open(arg.i) as input_f:
 			for i in input_f:
 				if i.startswith(">"):
@@ -317,6 +322,8 @@ class Transcript:
 					self.match_string[int(k)] = str(i)
 			else:
 				line_out = self.id + "\t" + "-".join(str(x) for x in pos) + "\t" + self.sequence[pos[0] : pos[1] + 1] + "&" + self.sequence[pos[2] : pos[3] + 1] + "\t" + s1.bracket[pos[0] : pos[1] + 1] + "&" + s1.bracket[pos[2] : pos[3] + 1] + "\t" + s2.bracket[pos[0] : pos[1] + 1] + "&" + s2.bracket[pos[2] : pos[3] + 1] + "\n"
+				for k in range(pos[0], pos[1] + 1):
+					self.match_string[int(k)] = str(i)
 				for k in range(pos[2], pos[3] + 1):
 					self.match_string[int(k)] = str(i)
 			out_file.write(line_out)
