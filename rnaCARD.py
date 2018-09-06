@@ -202,6 +202,8 @@ class Transcript:
 		self.match_positions = []
 		self.match_positions_small = []
 		self.closed_match_position = []
+		self.motifs_count = 0
+		self.matched_motifs = {}
 	def input_a(self):
 		with open(arg.i) as input_f:
 			for i in input_f:
@@ -236,6 +238,7 @@ class Transcript:
 								if arg.os:
 									self.get_matched_similar_stems(s1,s2) # podobne stemy
 								self.print_match(s1,s2)
+								self.matched_motifs_output(s1,s2)
 								#self.print_mismatch(s1,s2)
 							#mismatching motif
 							elif arg.mismatch:
@@ -246,126 +249,161 @@ class Transcript:
 								self.print_mismatch(s1,s2)
 						#else:
 						#	print "takie same!"
-	def print_match(self, s1, s2):
+	
+	def add_matching_motifs(self,s1,s2, pos_start, pos_end, shape_start, shape_end):
+		#self.match_positions.append([pos_start, pos_end])
+		#for k in range(pos_start, pos_end + 1):
+		#	self.match_string[int(k)] = '1'
 
-		match_string = list("0" * len(self.sequence))
-		start = False
-
-		for i,n in enumerate(s1.pairs):
-			if n != 'x' and start == False:
-				#if s1.domains_position[i][1] == s2.domains_position[n][1]:
-				#	start = True
-				#	pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
-				#	pos_end = s1.domains_position[i][1]
-
-				if s1.domains_position[i][0] == s2.domains_position[n][0]:
-					start = True
-					pos_start = s1.domains_position[i][0]
-					if s1.domains_position[i][1] == s2.domains_position[n][1]:
-						pos_end = s1.domains_position[i][1]
+		#find small closed motifs
+		#print pos_start, pos_end, self.id
+		i = shape_start
+		while i < shape_end + 1:
+			#print i, s1.domains[i]
+			if s1.domains[i] == "[":
+				pair = self.find_pair(s1, i)
+				if pair == shape_end:
+					self.motifs_count += 1
+					self.matched_motifs[self.motifs_count] = [pos_start, pos_end]
+					self.list_of_opened_stems[i] = self.motifs_count
+					i = shape_end
+				elif pair < shape_end:
+					i = pair + 1
+				elif pair > shape_end:
+					if  i == shape_start:
+						self.motifs_count += 1
+						self.matched_motifs[self.motifs_count] = [pos_start, s1.domains_position[i][1]]
+						pos_start = s1.domains_position[i+1][0]
+						self.list_of_opened_stems[i] = self.motifs_count
+					elif i == shape_end:
+						self.motifs_count += 1
+						self.matched_motifs[self.motifs_count] = [pos_start, s1.domains_position[i][1]]
+						self.list_of_opened_stems[i] = self.motifs_count
 					else:
-						if i == "[":
-							pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] > s2.domains_position[n][1] else s2.domains_position[n][1]
-						else:
-							pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
-						
-						self.match_positions.append([pos_start, pos_end])
-						for k in range(pos_start, pos_end + 1):
-							match_string[int(k)] = '1'
-						start = False
-				else:
-					#dodac starty motyw 
-					if s1.domains_position[i][1] == s2.domains_position[n][1]:
-						start = True
-						if i == "[":
-							pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] < s2.domains_position[n][0] else s2.domains_position[n][0]
-						else:
-							pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
-						pos_end = s1.domains_position[i][1]
-
-					else:
-						if i == "[":
-							pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] < s2.domains_position[n][0] else s2.domains_position[n][0]
-						else:
-							pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
-						
-						if i == "]":
-							pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] > s2.domains_position[n][1] else s2.domains_position[n][1]
-						else:
-							pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
-
-						#pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
-						#pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
-						self.match_positions.append([pos_start, pos_end])
-						for k in range(pos_start, pos_end + 1):
-							match_string[int(k)] = '1'
-						start = False
-			elif start == True:
-				if n == 'x':
-					start = False
-					self.match_positions.append([pos_start, pos_end])
-					for k in range(pos_start, pos_end + 1):
-						match_string[int(k)] = '1'
-				elif n != 'x':
-					if n != s1.pairs[i - 1] + 1:
-						start = False
-						self.match_positions.append([pos_start, pos_end])
-						for k in range(pos_start, pos_end + 1):
-							match_string[int(k)] = '1'
+						self.motifs_count += 1
+						self.matched_motifs[self.motifs_count] = [pos_start, s1.domains_position[i - 1][1]]
 						pos_start = s1.domains_position[i][0]
-					#else:
-					if s1.domains_position[i][0] == s2.domains_position[n][0]:
-						start = True
-						if i == "]":
-							pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] > s2.domains_position[n][1] else s2.domains_position[n][1]
-						else:
-							pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
+						self.motifs_count += 1
+						self.matched_motifs[self.motifs_count] = [pos_start, s1.domains_position[i][1]]
+						pos_start = s1.domains_position[i+1][0]
+						self.list_of_opened_stems[i] = self.motifs_count
+					i += 1
+			elif s1.domains[i] == "]":
+				pair = self.find_pair(s1, i)
+				if i != shape_start:
+					self.motifs_count += 1
+					self.matched_motifs[self.motifs_count] = [pos_start, s1.domains_position[i - 1][1]]
 
-					else:
-						#dodac starty motyw
-						self.match_positions.append([pos_start, pos_end])
+				self.matched_motifs[self.list_of_opened_stems[pair]].append(s1.domains_position[i][0])
+				self.matched_motifs[self.list_of_opened_stems[pair]].append(s1.domains_position[i][1])
+				if i != shape_end:
+					pos_start = s1.domains_position[i + 1][0]
+				i += 1
+			else:
+				i += 1
 
-						for k in range(pos_start, pos_end + 1):
-							match_string[int(k)] = '1'
-						if i == "[":
-							pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] < s2.domains_position[n][0] else s2.domains_position[n][0]
-						else:
-							pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
-						#dodac nowy motyw jesli koniec nie pasuje
-						if s1.domains_position[i][1] == s2.domains_position[n][1]:
-							start = True
-							#pos_start = s1.domains_position[i][0]
-							pos_end = s1.domains_position[i][1]
-						else:
-							if i == "[":
-								pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] < s2.domains_position[n][0] else s2.domains_position[n][0]
-							else:
-								pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
-							
-							if i == "]":
-								pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] > s2.domains_position[n][1] else s2.domains_position[n][1]
-							else:
-								pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
-							#pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
-							#pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
-							self.match_positions.append([pos_start, pos_end])
-							for k in range(pos_start, pos_end + 1):
-								match_string[int(k)] = '1'
-							start = False
-		if start == True:
-			self.match_positions.append([pos_start, pos_end])
-			for k in range(pos_start, pos_end + 1):
-				#pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
-				match_string[int(k)] = '1'
-								
-		#if self.id[:-4] == 'ENST00000334371':
-		#	print match_string
+		if s1.domains[shape_end] != "[" and s1.domains[shape_end] != "]":
+			self.motifs_count += 1
+			self.matched_motifs[self.motifs_count] = [pos_start, pos_end]
+		#print self.matched_motifs
+
+	def matched_motifs_output(self, s1, s2):
+		out_file = open("matched_motifs_out.txt", 'w')
+		for i in self.matched_motifs:
+			pos = self.matched_motifs[i]
+			if len(pos) == 2:
+				line_out = self.id + "\t" + str(i) + "\t" + "-".join(str(x) for x in pos) + "\t" + self.sequence[pos[0] : pos[1] + 1] + "\t" + s1.bracket[pos[0] : pos[1] + 1] + "\t" + s2.bracket[pos[0] : pos[1] + 1] + "\n"
+				for k in range(pos[0], pos[1] + 1):
+					self.match_string[int(k)] = str(i)
+			else:
+				line_out = self.id + "\t" + "-".join(str(x) for x in pos) + "\t" + self.sequence[pos[0] : pos[1] + 1] + "&" + self.sequence[pos[2] : pos[3] + 1] + "\t" + s1.bracket[pos[0] : pos[1] + 1] + "&" + s1.bracket[pos[2] : pos[3] + 1] + "\t" + s2.bracket[pos[0] : pos[1] + 1] + "&" + s2.bracket[pos[2] : pos[3] + 1] + "\n"
+				for k in range(pos[2], pos[3] + 1):
+					self.match_string[int(k)] = str(i)
+			out_file.write(line_out)
+		out_file.close()
 		
+		out_file_2 = open("matched_whole_transcript.txt", 'w')
+		out_file_2.write(self.id + "\t" + self.sequence + "\t" + s1.bracket + "\t" + s2.bracket + "\t" + " ".join(self.match_string) + "\n")
+
+		'''	
 		print ">", self.id
 		print self.sequence
 		print s1.bracket
 		print s2.bracket
-		print " ".join(match_string)	
+		print " ".join(self.match_string)
+		'''
+
+	def print_match(self, s1, s2):
+		self.match_string = list("0" * len(self.sequence))
+		start = False
+		self.motifs_count = 0
+		self.matched_motifs = {}
+		self.list_of_opened_stems = {} #number od stem : number of motif
+
+		for i,n in enumerate(s1.pairs):
+			if n != 'x' and start == False:
+				if s1.domains_position[i][0] == s2.domains_position[n][0]:
+					start = True
+					pos_start = s1.domains_position[i][0]
+					shape_start = i
+					if s1.domains_position[i][1] == s2.domains_position[n][1]:
+						pos_end = s1.domains_position[i][1]
+						shape_end = i
+					else:
+						pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
+						shape_end = i
+						self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+						start = False
+				else:
+					if s1.domains_position[i][1] == s2.domains_position[n][1]:
+						start = True
+						pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
+						pos_end = s1.domains_position[i][1]
+						shape_start = i
+						shape_end = i
+					else:
+						pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
+						pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
+						shape_start = i
+						shape_end = i
+						self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+						start = False
+			elif start == True:
+				if n == 'x':
+					start = False
+					self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+				elif n != 'x':
+					if n != s1.pairs[i - 1] + 1:
+						start = False
+						self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+						pos_start = s1.domains_position[i][0]
+						shape_start = i
+					#else:
+					if s1.domains_position[i][0] == s2.domains_position[n][0]:
+						start = True
+						shape_end = i
+						pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
+
+					else:
+						#dodac starty motyw
+						self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+						shape_start = i
+						pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
+						#dodac nowy motyw jesli koniec nie pasuje
+						if s1.domains_position[i][1] == s2.domains_position[n][1]:
+							start = True
+							shape_end = i
+							pos_end = s1.domains_position[i][1]
+						else:
+							shape_start = i
+							pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
+							shape_end = i
+							pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
+							self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+							start = False
+		if start == True:
+			self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+
 	def print_mismatch(self, s1, s2):
 		#print s1.pairs
 		#print s2.pairs
@@ -430,7 +468,7 @@ class Transcript:
 		print self.sequence
 		print s1.bracket
 		print s2.bracket
-		print " ".join(mismatch_string)
+		print " ".join(mismatch_string)	
 
 	def stems_overlap(self, s1, s2, pos_1, pos_2): #chceck if pairs match or in range
 		match = False
@@ -488,13 +526,22 @@ class Transcript:
 	def find_pair(self, s, n):
 		op = 0
 		cl = 0
-		for i in range(n, len(s.domains)):
-			if s.domains[i] == "[":
-				op += 1
-			elif s.domains[i] == "]":
-				cl += 1
-			if op == cl:
-				return i		
+		if s.domains[n] == "[":
+			for i in range(n, len(s.domains)):
+				if s.domains[i] == "[":
+					op += 1
+				elif s.domains[i] == "]":
+					cl += 1
+				if op == cl:
+					return i
+		else:
+			for i in list(reversed(range(0, n + 1))):
+				if s.domains[i] == "[":
+					op += 1
+				elif s.domains[i] == "]":
+					cl += 1
+				if op == cl:
+					return i
 	def get_matched_similar_stems(self, s1, s2):
 		for i, n in enumerate(s1.pairs):
 			if n == 'x':
