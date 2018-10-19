@@ -255,7 +255,7 @@ class Transcript:
 						#else:
 						#	print "takie same!"
 	
-	def add_matching_motifs(self,s1,s2, pos_start, pos_end, shape_start, shape_end):
+	def add_matching_motifs(self,s1,s2, pos_start, pos_end, shape_start, shape_end, shape2_start):
 		#self.match_positions.append([pos_start, pos_end])
 		#for k in range(pos_start, pos_end + 1):
 		#	self.match_string[int(k)] = '1'
@@ -265,6 +265,7 @@ class Transcript:
 		#print pos_start, pos_end, self.id, shape_start, shape_end
 		#print s1.domains
 		#print s1.domains[shape_start : shape_end + 1]
+		dif = shape2_start - shape_start
 		i = shape_start
 		new_shape_start = i
 		while i < shape_end + 1:
@@ -274,7 +275,7 @@ class Transcript:
 				pair = self.find_pair(s1, i)
 				if pair == shape_end:
 					self.motifs_count += 1
-					self.matched_motifs[self.motifs_count] = [[pos_start, pos_end], s1.domains[shape_start : shape_end + 1]]
+					self.matched_motifs[self.motifs_count] = [[pos_start, pos_end], s1.domains[shape_start : shape_end + 1], [shape_start, shape_end], dif]
 					self.list_of_opened_stems[i] = self.motifs_count
 					i = shape_end + 1
 				elif pair < shape_end:
@@ -285,7 +286,7 @@ class Transcript:
 				elif pair > shape_end:
 					if  i == shape_start:
 						self.motifs_count += 1
-						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i][1]], s1.domains[new_shape_start : i + 1]]
+						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i][1]], s1.domains[new_shape_start : i + 1], [new_shape_start, i], dif]
 						pos_start = s1.domains_position[i + 1][0]
 						new_shape_start = i + 1
 						self.list_of_opened_stems[i] = self.motifs_count
@@ -298,7 +299,7 @@ class Transcript:
 					elif i == new_shape_start:
 						#print i
 						self.motifs_count += 1
-						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i][1]], s1.domains[new_shape_start : i + 1]]
+						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i][1]], s1.domains[new_shape_start : i + 1], [new_shape_start, i], dif]
 						self.list_of_opened_stems[i] = self.motifs_count
 						#if pos_start > s1.domains_position[i][1]:
 						#	print pos_start, s1.domains_position[i][1], "\n"
@@ -306,12 +307,12 @@ class Transcript:
 						new_shape_start = i + 1
 					elif i != new_shape_start:
 						self.motifs_count += 1
-						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i - 1][1]],s1.domains[new_shape_start : i]]
+						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i - 1][1]],s1.domains[new_shape_start : i], [new_shape_start, i], dif]
 						#if pos_start > s1.domains_position[i - 1][1]:
 						#	print pos_start, s1.domains_position[i - 1][1], "\n"
 						pos_start = s1.domains_position[i][0]
 						self.motifs_count += 1
-						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i][1]], s1.domains[i : i + 1]]
+						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i][1]], s1.domains[i : i + 1],[i,i], dif]
 						pos_start = s1.domains_position[i + 1][0]
 						new_shape_start = i + 1
 						self.list_of_opened_stems[i] = self.motifs_count
@@ -324,12 +325,15 @@ class Transcript:
 					self.matched_motifs[self.list_of_opened_stems[pair]][0].append(s1.domains_position[i][0])
 					self.matched_motifs[self.list_of_opened_stems[pair]][0].append(s1.domains_position[i][1])
 					self.matched_motifs[self.list_of_opened_stems[pair]][1].append(" ]")
-					#print self.matched_motifs[self.list_of_opened_stems[pair]][1]
+					self.matched_motifs[self.list_of_opened_stems[pair]][2].append(i)
+					self.matched_motifs[self.list_of_opened_stems[pair]][2].append(i)
+					d = [self.matched_motifs[self.list_of_opened_stems[pair]][3], dif]
+					self.matched_motifs[self.list_of_opened_stems[pair]][3] = d
 				else:
 					self.motifs_count += 1
 					#print new_shape_start, i
 					#print s1.domains[new_shape_start : i + 1]
-					self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i][1]], s1.domains[new_shape_start : i + 1]]
+					self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i][1]], s1.domains[new_shape_start : i + 1], [new_shape_start, i], dif]
 
 				if i < shape_end:
 					pos_start = s1.domains_position[i + 1][0]
@@ -340,22 +344,24 @@ class Transcript:
 
 		if s1.domains[shape_end] != "[" and s1.domains[shape_end] != "]":
 			self.motifs_count += 1
-			self.matched_motifs[self.motifs_count] = [[pos_start, pos_end], s1.domains[new_shape_start : shape_end + 1]]
+			self.matched_motifs[self.motifs_count] = [[pos_start, pos_end], s1.domains[new_shape_start : shape_end + 1], [new_shape_start, shape_end], dif]
 		#print self.matched_motifs
 
 	def matched_motifs_output(self, s1, s2):
 		out_file = open("matched_motifs_out.txt", 'a')
 		for i in self.matched_motifs:
 			pos = self.matched_motifs[i][0]
+			shape_pos = self.matched_motifs[i][2]
+			shape_dif = self.matched_motifs[i][3]
 			#print self.matched_motifs[i][1]
 			shape = " ".join(self.matched_motifs[i][1])
 			#print shape
 			if len(pos) == 2:
-				line_out = self.id + "\t" + str(i) + "\t" + str(pos[0]) + "\t" + str(pos[1]) + '\t' + shape + "\t" + self.sequence[pos[0] : pos[1] + 1] + "\t" + s1.bracket[pos[0] : pos[1] + 1] + "\t" + s2.bracket[pos[0] : pos[1] + 1] + "\n"
+				line_out = self.id + "\t" + str(i) + "\t" + str(pos[0]) + "\t" + str(pos[1]) + '\t' + shape + "\t" + self.sequence[pos[0] : pos[1] + 1] + "\t" + s1.bracket[pos[0] : pos[1] + 1] + "\t" + s2.bracket[pos[0] : pos[1] + 1] + "\t" + str(s1.domains_position[shape_pos[0]][0]) + "\t" + str(s1.domains_position[shape_pos[1]][1]) + "\t" + str(s2.domains_position[shape_pos[0] + shape_dif][0]) + "\t" + str(s2.domains_position[shape_pos[1] + shape_dif][1]) + "\t" + "\n"
 				for k in range(pos[0], pos[1] + 1):
 					self.match_string[int(k)] = str(i)
 			else:
-				line_out = self.id + "\t" + str(i) + "\t" + str(pos[0]) + " " + str(pos[2]) + "\t" + str(pos[1]) + " " + str(pos[3])  + '\t' + shape + "\t" + self.sequence[pos[0] : pos[1] + 1] + "&" + self.sequence[pos[2] : pos[3] + 1] + "\t" + s1.bracket[pos[0] : pos[1] + 1] + "&" + s1.bracket[pos[2] : pos[3] + 1] + "\t" + s2.bracket[pos[0] : pos[1] + 1] + "&" + s2.bracket[pos[2] : pos[3] + 1] + "\n"
+				line_out = self.id + "\t" + str(i) + "\t" + str(pos[0]) + " " + str(pos[2]) + "\t" + str(pos[1]) + " " + str(pos[3])  + '\t' + shape + "\t" + self.sequence[pos[0] : pos[1] + 1] + "&" + self.sequence[pos[2] : pos[3] + 1] + "\t" + s1.bracket[pos[0] : pos[1] + 1] + "&" + s1.bracket[pos[2] : pos[3] + 1] + "\t" + s2.bracket[pos[0] : pos[1] + 1] + "&" + s2.bracket[pos[2] : pos[3] + 1] + "\t" + str(s1.domains_position[shape_pos[0]]) + " " + str(s1.domains_position[shape_pos[2]]) + "\t" + str(s1.domains_position[shape_pos[1]]) + " " + str(s1.domains_position[shape_pos[3]]) + "\t" + str(s2.domains_position[shape_pos[0] + shape_dif[0]]) + " " + str(s2.domains_position[shape_pos[1] + shape_dif[0]]) + "\t" + str(s2.domains_position[shape_pos[2] + shape_dif[1]]) + " " +  str(s2.domains_position[shape_pos[3] + shape_dif[1]]) + "\n"
 				for k in range(pos[0], pos[1] + 1):
 					self.match_string[int(k)] = str(i)
 				for k in range(pos[2], pos[3] + 1):
@@ -386,13 +392,14 @@ class Transcript:
 					start = True
 					pos_start = s1.domains_position[i][0]
 					shape_start = i
+					shape2_start = n
 					if s1.domains_position[i][1] == s2.domains_position[n][1]:
 						pos_end = s1.domains_position[i][1]
 						shape_end = i
 					else:
 						pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
 						shape_end = i
-						self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+						self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end, shape2_start)
 						start = False
 				else:
 					if s1.domains_position[i][1] == s2.domains_position[n][1]:
@@ -400,26 +407,29 @@ class Transcript:
 						pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
 						pos_end = s1.domains_position[i][1]
 						shape_start = i
+						shape2_start = n
 						shape_end = i
 					else:
 						pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
 						pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
 						shape_start = i
+						shape2_start = n
 						shape_end = i
-						self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+						self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end, shape2_start)
 						start = False
 			elif start == True:
 				if n == 'x':
 					start = False
-					self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+					self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end, shape2_start)
 				elif n != 'x':
 					if n != s1.pairs[i - 1] + 1:
 						start = True
 						shape_end = i - 1
 						pos_end = s1.domains_position[i - 1][1] if s1.domains_position[i - 1][1] < s2.domains_position[s1.pairs[i - 1]][1] else s2.domains_position[s1.pairs[i - 1]][1]
-						self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+						self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end, shape2_start)
 						pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
 						shape_start = i
+						shape2_start = n
 						shape_end = i
 						pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
 					#else:
@@ -431,8 +441,9 @@ class Transcript:
 						#dodac starty motyw
 						#pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
 						if i != shape_start:
-							self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+							self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end, shape2_start)
 						shape_start = i
+						shape2_start = n
 						pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
 						#dodac nowy motyw jesli koniec nie pasuje
 						if s1.domains_position[i][1] == s2.domains_position[n][1]:
@@ -441,13 +452,14 @@ class Transcript:
 							pos_end = s1.domains_position[i][1]
 						else:
 							shape_start = i
+							shape2_start = n
 							pos_start = s1.domains_position[i][0] if s1.domains_position[i][0] > s2.domains_position[n][0] else s2.domains_position[n][0]
 							shape_end = i
 							pos_end = s1.domains_position[i][1] if s1.domains_position[i][1] < s2.domains_position[n][1] else s2.domains_position[n][1]
-							self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+							self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end, shape2_start)
 							start = False
 		if start == True:
-			self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end)
+			self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end, shape2_start)
 
 	def print_mismatch(self, s1, s2):
 		#print s1.pairs
