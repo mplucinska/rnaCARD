@@ -338,7 +338,9 @@ class Transcript:
 				for k in range(pos[0], pos[1] + 1):
 					self.match_string[int(k)] = str(i)
 			else:
-				line_out = self.id + "\t" + str(i) + "\t" + str(pos[0]) + " " + str(pos[2]) + "\t" + str(pos[1]) + " " + str(pos[3])  + '\t' + shape + "\t" + self.sequence[pos[0] : pos[1] + 1] + "&" + self.sequence[pos[2] : pos[3] + 1] + "\t" + s1.bracket[pos[0] : pos[1] + 1] + "&" + s1.bracket[pos[2] : pos[3] + 1] + "\t" + s2.bracket[pos[0] : pos[1] + 1] + "&" + s2.bracket[pos[2] : pos[3] + 1] + "\t" + str(s1.domains_position[shape_pos[0]][0]) + " " + str(s1.domains_position[shape_pos[2]][1]) + "\t" + str(s1.domains_position[shape_pos[1]][0]) + " " + str(s1.domains_position[shape_pos[3]][1]) + "\t" + str(s2.domains_position[shape_pos[0] + shape_dif[0]][0]) + " " + str(s2.domains_position[shape_pos[1] + shape_dif[0]][1]) + "\t" + str(s2.domains_position[shape_pos[2] + shape_dif[1]][0]) + " " +  str(s2.domains_position[shape_pos[3] + shape_dif[1]][1]) + "\n"
+				#print shape_pos, shape_dif
+				#print s2.domains_position
+				line_out = self.id + "\t" + str(i) + "\t" + str(pos[0]) + " " + str(pos[2]) + "\t" + str(pos[1]) + " " + str(pos[3])  + '\t' + shape + "\t" + self.sequence[pos[0] : pos[1] + 1] + "&" + self.sequence[pos[2] : pos[3] + 1] + "\t" + s1.bracket[pos[0] : pos[1] + 1] + "&" + s1.bracket[pos[2] : pos[3] + 1] + "\t" + s2.bracket[pos[0] : pos[1] + 1] + "&" + s2.bracket[pos[2] : pos[3] + 1] + "\t" + str(s1.domains_position[shape_pos[0]][0]) + " " + str(s1.domains_position[shape_pos[2]][0]) + "\t" + str(s1.domains_position[shape_pos[0]][1]) + " " + str(s1.domains_position[shape_pos[2]][1]) + "\t" + str(s2.domains_position[shape_pos[0] + shape_dif[0]][0]) + " " + str(s2.domains_position[shape_pos[2] + shape_dif[1]][0]) + "\t" + str(s2.domains_position[shape_pos[0] + shape_dif[0]][1]) + " " +  str(s2.domains_position[shape_pos[2] + shape_dif[1]][1]) + "\n"
 				for k in range(pos[0], pos[1] + 1):
 					self.match_string[int(k)] = str(i)
 				for k in range(pos[2], pos[3] + 1):
