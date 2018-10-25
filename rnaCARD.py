@@ -264,12 +264,14 @@ class Transcript:
 		dif = shape2_start - shape_start
 		i = shape_start
 		new_shape_start = i
+		#print shape2_start, shape_start
 		while i < shape_end + 1:
 			if s1.domains[i] == "[":
 				pair = self.find_pair(s1, i)
 				if pair == shape_end:
 					self.motifs_count += 1
-					self.matched_motifs[self.motifs_count] = [[pos_start, pos_end], s1.domains[shape_start : shape_end + 1], [shape_start, shape_end], dif]
+					self.matched_motifs[self.motifs_count] = [[pos_start, pos_end], s1.domains[i : shape_end + 1], [i, shape_end], dif]
+					print self.matched_motifs[self.motifs_count], "a"
 					self.list_of_opened_stems[i] = self.motifs_count
 					i = shape_end + 1
 				elif pair < shape_end:
@@ -278,6 +280,7 @@ class Transcript:
 					if  i == shape_start:
 						self.motifs_count += 1
 						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i][1]], s1.domains[new_shape_start : i + 1], [new_shape_start, i], dif]
+						#print self.matched_motifs[self.motifs_count], "b"
 						pos_start = s1.domains_position[i + 1][0]
 						new_shape_start = i + 1
 						self.list_of_opened_stems[i] = self.motifs_count
@@ -285,16 +288,19 @@ class Transcript:
 						#print i
 						self.motifs_count += 1
 						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i][1]], s1.domains[new_shape_start : i + 1], [new_shape_start, i], dif]
+						#print self.matched_motifs[self.motifs_count], "c"
 						self.list_of_opened_stems[i] = self.motifs_count
 
 						pos_start = s1.domains_position[i + 1][0]
 						new_shape_start = i + 1
 					elif i != new_shape_start:
 						self.motifs_count += 1
-						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i - 1][1]],s1.domains[new_shape_start : i], [new_shape_start, i], dif]
+						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i - 1][1]],s1.domains[new_shape_start : i], [new_shape_start, i - 1], dif]
+						print self.matched_motifs[self.motifs_count] , "d"
 						pos_start = s1.domains_position[i][0]
 						self.motifs_count += 1
 						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i][1]], s1.domains[i : i + 1],[i,i], dif]
+						print self.matched_motifs[self.motifs_count], "e"
 						pos_start = s1.domains_position[i + 1][0]
 						new_shape_start = i + 1
 						self.list_of_opened_stems[i] = self.motifs_count
@@ -309,9 +315,11 @@ class Transcript:
 					self.matched_motifs[self.list_of_opened_stems[pair]][2].append(i)
 					d = [self.matched_motifs[self.list_of_opened_stems[pair]][3], dif]
 					self.matched_motifs[self.list_of_opened_stems[pair]][3] = d
+					print self.matched_motifs[self.list_of_opened_stems[pair]], "f"
 				else:
 					self.motifs_count += 1
 					self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i][1]], s1.domains[new_shape_start : i + 1], [new_shape_start, i], dif]
+					print self.matched_motifs[self.motifs_count], "g"
 
 				if i < shape_end:
 					pos_start = s1.domains_position[i + 1][0]
@@ -323,6 +331,7 @@ class Transcript:
 		if s1.domains[shape_end] != "[" and s1.domains[shape_end] != "]":
 			self.motifs_count += 1
 			self.matched_motifs[self.motifs_count] = [[pos_start, pos_end], s1.domains[new_shape_start : shape_end + 1], [new_shape_start, shape_end], dif]
+			print self.matched_motifs[self.motifs_count], "h"
 
 	def matched_motifs_output(self, s1, s2):
 		out_file = open("matched_motifs_out.txt", 'a')
@@ -337,6 +346,7 @@ class Transcript:
 				line_out = self.id + "\t" + str(i) + "\t" + str(pos[0]) + "\t" + str(pos[1]) + '\t' + shape + "\t" + self.sequence[pos[0] : pos[1] + 1] + "\t" + s1.bracket[pos[0] : pos[1] + 1] + "\t" + s2.bracket[pos[0] : pos[1] + 1] + "\t" + str(s1.domains_position[shape_pos[0]][0]) + "\t" + str(s1.domains_position[shape_pos[1]][1]) + "\t" + str(s2.domains_position[shape_pos[0] + shape_dif][0]) + "\t" + str(s2.domains_position[shape_pos[1] + shape_dif][1]) + "\t" + "\n"
 				for k in range(pos[0], pos[1] + 1):
 					self.match_string[int(k)] = str(i)
+				print line_out
 			else:
 				#print shape_pos, shape_dif
 				#print s2.domains_position
