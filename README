@@ -1,0 +1,53 @@
+# rnaCARD
+
+rnaCARD is a software for identification similar and different structural motifs in alternative structures of one transcript.
+
+
+# Usage
+```
+python rnaCARD.py -i input.file --match --mismatch --prefix "example" --mo 0.6
+
+```
+# Parameters
+
+** i ** path to input file
+** match ** identification of similar motifes
+** mismatch ** identification of differential motifes
+** prefix ** prefix added to the output files. Default: output
+** mo ** minimum overlap of loop sequence. Fraction of smaller loop. Default: 0.6 [0 - 1]
+** os ** if include stems in the results. By default only hairpin structures included.
+
+# Input format
+
+For each transcript 4 lines are expected:
+
+1. ID
+2. nucleotide sequence [seq tab AAAAGAGAGAGAGGAA]
+3. first stucture in dot-bracket notation [str1 tab .......((((((....)))))).....]
+4. second stucture in dot-bracket notation [str1 tab .......((((........)))).....]
+
+See `ex.rnaCARD.input.txt` file as example.
+
+# Outputs
+
+1. Motif oriented outputs [*matched_motifs_out.txt, *mismatched_motifs_out.txt]
+
+Tab-separeted files including following columns:
+- ID    
+- motif number in transcript
+- motif sequence
+- dot-bracket from first structure
+- dot-bracket from second structure
+- position in first structure
+- position in second structure
+
+2. Output showing similarities / differences accross whole transcript [*matched_whole_transcripts.txt, *mismatched_whole_transcripts.txt]
+
+This output enables easy vizualization with VARNA application.
+
+Tab-separeted files including following columns:
+- ID 
+- nucleotide sequence 
+- structrure 1
+- structure 2
+- 0 or number connecting position with identified motif
