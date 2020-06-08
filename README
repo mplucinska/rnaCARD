@@ -2,6 +2,9 @@
 
 rnaCARD is a software for identification similar and different structural motifs in alternative structures of one transcript.
 
+# Dependencies
+
+python 2.7
 
 # Usage
 ```
