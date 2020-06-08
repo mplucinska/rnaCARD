@@ -25,6 +25,7 @@ class Arguments:
 		parser.add_argument("-i", help = "input file", required = True, type = str)
 		parser.add_argument("--mo", help = "minimum overlap", type = str, default = 0.6)
 		#parser.add_argument("--cs", help = "closing stems", action='store_true', required = False)
+		parser.add_argument("--prefix", help = "output", default='output', required = False)
 		parser.add_argument("--os", help = "overlaping stems", action='store_true', required = False)
 		parser.add_argument("--match", help = "find matching motifs", action='store_true', required = False)
 		parser.add_argument("--mismatch", help = "find mismatching motifs", action='store_true', required = False)
@@ -36,6 +37,9 @@ class Arguments:
 		self.os = args.os
 		self.match = args.match
 		self.mismatch = args.mismatch
+		self.prefix = args.prefix
+
+		assert self.match == True or self.mismatch == True, "add 'match' or 'mismatch' parameter to identify matching or mismatching motifs"
 
 class Structure:
 	def _init_(self):
@@ -52,6 +56,7 @@ class Structure:
 		self.match = []
 		self.closed_motifs = []
 		self.str_id = ''
+
 	def find_bracket(self,p):
 		c_o = 0
 		c_c = 0
@@ -75,6 +80,7 @@ class Structure:
 					x = i
 					break
 		return x
+
 	def new_stem(self, a, b, a_p, b_p):
 		lvl = 5
 		sep = False
@@ -143,6 +149,7 @@ class Structure:
 			self.shape_position[len(self.shape)-1].append(prev_i)
 		except KeyError:
 			return False
+
 	def get_domains(self): #dividing shape into domains
 		o = 0
 		c = 0
@@ -171,6 +178,7 @@ class Structure:
 				else:
 					self.domains.append("]")
 					self.domains_position.append(self.shape_position[i])
+
 	def loop_seq(self):
 		o = False
 		op =0
@@ -204,11 +212,19 @@ class Transcript:
 		self.closed_match_position = []
 		self.motifs_count = 0
 		self.matched_motifs = {}
+
 	def input_a(self):
-		out_file = open("matched_motifs_out.txt", 'w')
-		out_file_2 = open("matched_whole_transcripts.txt", 'w')
-		out_file.close()
-		out_file_2.close()
+		if arg.match:
+			out_file = open("_".join([arg.prefix, "matched_motifs_out.txt"]), 'w')
+			out_file_2 = open("_".join([arg.prefix,"matched_whole_transcripts.txt"]), 'w')
+			out_file.close()
+			out_file_2.close()
+
+		if arg.mismatch:
+			out_file_3 = open("_".join([arg.prefix,"mismatched_motifs_out.txt"]), 'w')
+			out_file_4 = open("_".join([arg.prefix,"mismatched_whole_transcripts.txt"]), 'w')
+			out_file_3.close()
+			out_file_4.close()
 
 		with open(arg.i) as input_f:
 			for i in input_f:
@@ -237,9 +253,6 @@ class Transcript:
 							#matching motifs
 							if arg.match:
 								self.get_matched_hairpins_1(s1,s2) # pasujace hairpiny
-								#self.get_matched_hairpins_2(s1,s2)
-								#if arg.cs:
-								#	self.get_matched_closing_stems(s1,s2) #stemy zamykajace dopasowane motywy
 								if arg.os:
 									self.get_matched_similar_stems(s1,s2) # podobne stemy
 								self.print_match(s1,s2)
@@ -254,17 +267,14 @@ class Transcript:
 								self.print_mismatch(s1,s2)
 						#else:
 						#	print "takie same!"
+
 	
 	def add_matching_motifs(self,s1,s2, pos_start, pos_end, shape_start, shape_end, shape2_start):
-		#self.match_positions.append([pos_start, pos_end])
-		#for k in range(pos_start, pos_end + 1):
-		#	self.match_string[int(k)] = '1'
 
-		#find small closed motifs
 		dif = shape2_start - shape_start
 		i = shape_start
 		new_shape_start = i
-		#print shape2_start, shape_start
+
 		while i < shape_end + 1:
 			if s1.domains[i] == "[":
 				pair = self.find_pair(s1, i)
@@ -305,6 +315,9 @@ class Transcript:
 			elif s1.domains[i] == "]":
 				pair = self.find_pair(s1, i)
 				if pair < shape_start:
+					if new_shape_start != i:
+						self.motifs_count += 1
+						self.matched_motifs[self.motifs_count] = [[pos_start, s1.domains_position[i - 1][1]], s1.domains[new_shape_start : i], [new_shape_start, i - 1], dif]
 					self.matched_motifs[self.list_of_opened_stems[pair]][0].append(s1.domains_position[i][0])
 					self.matched_motifs[self.list_of_opened_stems[pair]][0].append(s1.domains_position[i][1])
 					self.matched_motifs[self.list_of_opened_stems[pair]][1].append(" ]")
@@ -328,7 +341,7 @@ class Transcript:
 			self.matched_motifs[self.motifs_count] = [[pos_start, pos_end], s1.domains[new_shape_start : shape_end + 1], [new_shape_start, shape_end], dif]
 
 	def matched_motifs_output(self, s1, s2):
-		out_file = open("matched_motifs_out.txt", 'a')
+		out_file = open("_".join([arg.prefix,"matched_motifs_out.txt"]), 'a')
 		for i in self.matched_motifs:
 			pos = self.matched_motifs[i][0]
 			shape_pos = self.matched_motifs[i][2]
@@ -351,16 +364,9 @@ class Transcript:
 			out_file.write(line_out)
 		out_file.close()
 		
-		out_file_2 = open("matched_whole_transcript.txt", 'a')
+		out_file_2 = open("_".join([arg.prefix,"matched_whole_transcripts.txt"]), 'a')
 		out_file_2.write(self.id + "\t" + self.sequence + "\t" + s1.bracket + "\t" + s2.bracket + "\t" + " ".join(self.match_string) + "\n")
 
-		'''	
-		print ">", self.id
-		print self.sequence
-		print s1.bracket
-		print s2.bracket
-		print " ".join(self.match_string)
-		'''
 
 	def print_match(self, s1, s2):
 		self.match_string = list("0" * len(self.sequence))
@@ -443,15 +449,57 @@ class Transcript:
 		if start == True:
 			self.add_matching_motifs(s1, s2, pos_start, pos_end, shape_start, shape_end, shape2_start)
 
+	def find_shape_for_mismatch(self, s1, s2, pos_start, pos_end):
+
+		shape_1_start = None
+		shape_1_end = None
+		
+		for i, domain in enumerate(s1.domains_position):
+
+			if domain[0] <= pos_start and domain[1] >= pos_start:
+				shape_1_start = i
+
+			if domain[0] <= pos_end and domain[1] >= pos_end:
+				shape_1_end = i
+			
+			if shape_1_start == None and domain[0] > pos_start:
+				shape_1_start = i - 1
+
+			if shape_1_end == None and domain[0] > pos_end:
+				shape_1_end = i - 1
+
+		mismatch_motif_shape_1 = s1.domains[shape_1_start : shape_1_end + 1]
+
+		shape_2_start = None
+		shape_2_end = None
+
+		for i, domain in enumerate(s2.domains_position):
+			if domain[0] <= pos_start and domain[1] >= pos_start:
+				shape_2_start = i
+			if domain[0] <= pos_end and domain[1] >= pos_end:
+				shape_2_end = i
+
+			if shape_2_start == None and domain[0] > pos_start:
+				shape_2_start = i - 1
+			if shape_2_end == None and domain[0] > pos_end:
+				shape_2_end = i - 1
+
+		mismatch_motif_shape_2 = s2.domains[shape_2_start : shape_2_end + 1]
+
+		return(mismatch_motif_shape_1, mismatch_motif_shape_2)
+
+	def add_mismatching_motif(self, motifs_count, s1, s2, pos_start, pos_end, shape_start, shape_end, out_file_1):
+		shape1, shape2 = self.find_shape_for_mismatch(s1, s2, pos_start, pos_end)
+		line_out = "\t".join([self.id, str(motifs_count), str(pos_start), str(pos_end), s1.bracket[pos_start : pos_end + 1], s2.bracket[pos_start : pos_end + 1]]) + "\n"
+		out_file_1.write(line_out)
+
 	def print_mismatch(self, s1, s2):
-		#print s1.pairs
-		#print s2.pairs
-		#print s1.domains
-		#print s2.domains
+
+		out_file_1 = open("_".join([arg.prefix,"mismatched_motifs_out.txt"]), 'a')
 		mismatch_string = list("0" * len(self.sequence))
 		start = False
 		self.mismatch_positions = []
-
+		motifs_count = 0 
 		if s1.pairs[0] != 0 and s2.pairs[0] != 0:
 			prev_match_1 = -1
 			prev_match_2 = -1
@@ -462,28 +510,38 @@ class Transcript:
 					prev_match_1 = i
 					prev_match_2 = n
 					start = True
+					shape_start = i
 				elif start == True:
 					if n > prev_match_2 + 1 and i == prev_match_1 + 1:
-						#print prev_match_2 + 1, n - 1, "s2"
 						pos_start = s2.domains_position[prev_match_2 + 1][0]
 						pos_end = s2.domains_position[n - 1][1]
+						shape_start = prev_match_2 + 1
+						shape_end = n - 1
+						motifs_count += 1
+						self.add_mismatching_motif(motifs_count, s1, s2, pos_start, pos_end, shape_start, shape_end, out_file_1)
 						self.mismatch_positions.append([pos_start, pos_end])
 						for k in range(pos_start, pos_end + 1):
-							mismatch_string[int(k)] = '1'			
+							mismatch_string[int(k)] = str(motifs_count)		
 					elif n == prev_match_2 + 1 and i > prev_match_1 + 1:
-						#print prev_match_1 + 1, i - 1, "s1"
 						pos_start = s1.domains_position[prev_match_1 + 1][0]
 						pos_end = s1.domains_position[i - 1][1]
+						shape_start = prev_match_1 + 1
+						shape_end = i - 1
+						motifs_count += 1
+						self.add_mismatching_motif(motifs_count, s1, s2, pos_start, pos_end, shape_start, shape_end, out_file_1)
 						self.mismatch_positions.append([pos_start, pos_end])
 						for k in range(pos_start, pos_end + 1):
-							mismatch_string[int(k)] = '1'
+							mismatch_string[int(k)] = str(motifs_count)
 					elif n > prev_match_2 + 1 and i > prev_match_1 + 1:
-						#print prev_match_1, prev_match_2, i - 1, n - 1
 						pos_start = s1.domains_position[prev_match_1 + 1][0] if s1.domains_position[prev_match_1 + 1][0] < s2.domains_position[prev_match_2 + 1][0] else s2.domains_position[prev_match_2 + 1][0]
 						pos_end = s1.domains_position[i - 1][1] if s1.domains_position[i - 1][1] > s2.domains_position[n - 1][1] else s2.domains_position[n - 1][1]
+						shape_start = prev_match_1 + 1 if s1.domains_position[prev_match_1 + 1][0] < s2.domains_position[prev_match_2 + 1][0] else prev_match_2 + 1
+						shape_end = i - 1 if s1.domains_position[i - 1][1] > s2.domains_position[n - 1][1] else n - 1
+						motifs_count += 1
+						self.add_mismatching_motif(motifs_count, s1, s2, pos_start, pos_end, shape_start, shape_end, out_file_1)
 						self.mismatch_positions.append([pos_start, pos_end])
 						for k in range(pos_start, pos_end + 1):
-							mismatch_string[int(k)] = '1'
+							mismatch_string[int(k)] = str(motifs_count)
 					prev_match_2 = n
 					prev_match_1 = i
 		if n == 'x':
@@ -499,16 +557,14 @@ class Transcript:
 						pos_start = s1.domains_position[prev_match_1][0] if s1.domains_position[prev_match_1][0] < s2.domains_position[prev_match_2][0] else s2.domains_position[prev_match_2][0]
 
 			pos_end = s1.domains_position[-1][1] if s1.domains_position[- 1][1] > s2.domains_position[- 1][1] else s2.domains_position[- 1][1]
+			motifs_count += 1
 			self.mismatch_positions.append([pos_start, pos_end])
 			for k in range(pos_start, pos_end + 1):
-				mismatch_string[int(k)] = '1'
-		'''
-		print ">", self.id
-		print self.sequence
-		print s1.bracket
-		print s2.bracket
-		print " ".join(mismatch_string)	
-		'''
+				mismatch_string[int(k)] = str(motifs_count)
+		out_file_2 = open("_".join([arg.prefix,"mismatched_whole_transcripts.txt"]), 'a')
+		out_file_2.write(self.id + "\t" + self.sequence + "\t" + s1.bracket + "\t" + s2.bracket + "\t" + " ".join(mismatch_string) + "\n")
+
+
 	def stems_overlap(self, s1, s2, pos_1, pos_2): #chceck if pairs match or in range
 		match = False
 		for i in range(pos_1[0], pos_1[1]):
@@ -581,6 +637,7 @@ class Transcript:
 					cl += 1
 				if op == cl:
 					return i
+
 	def get_matched_similar_stems(self, s1, s2):
 		for i, n in enumerate(s1.pairs):
 			if n == 'x':
@@ -601,7 +658,7 @@ class Transcript:
 									s1.pairs[pair_1] = pair_2
 									s2.pairs[j] = i
 									s2.pairs[pair_2] = pair_1
-	def get_matched_hairpins_1(self,s1,s2):
+	def get_matched_hairpins_1(self, s1, s2):
 		s1.pairs = ['x']*len(s1.domains)
 		s2.pairs = ['x']*len(s2.domains)
 		#print s1.domains
