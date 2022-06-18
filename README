@@ -8,7 +8,7 @@ python 2.7
 
 # Usage
 ```
-python rnaCARD.py -i input.file --match --mismatch --prefix "example" --mo 0.6
+python rnaCARD.py -i input.file --match --mismatch --prefix "example"
 
 ```
 # Parameters
