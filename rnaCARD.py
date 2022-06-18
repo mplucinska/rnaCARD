@@ -230,13 +230,13 @@ class Transcript:
 			for i in input_f:
 				if i.startswith(">"):
 					self.id = i.strip()[1:]
-					self.sequence = input_f.next().strip().split()[1]
+					self.sequence = next(input_f).strip().split()[1]
 					s1 = Structure()
-					line = input_f.next().strip().split()	# structure 1
+					line = next(input_f).strip().split()	# structure 1
 					s1.bracket = line[1]
 					s1.str_id = line[0]
 					s2 = Structure()
-					line = input_f.next().strip().split()	# structure 2
+					line = next(input_f).strip().split()	# structure 2
 					s2.bracket = line[1]
 					s2.str_id = line[0]
 
