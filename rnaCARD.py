@@ -22,13 +22,13 @@ class Arguments:
 
 	def parse(self):
 		parser = argparse.ArgumentParser()
-		parser.add_argument("-i", help = "input file", required = True, type = str)
-		parser.add_argument("--mo", help = "minimum overlap", type = str, default = 0.6)
+		parser.add_argument("-i", help = "Input file", required = True, type = str)
+		parser.add_argument("--mo", help = "Minimum overlap", type = str, default = 0.6)
 		#parser.add_argument("--cs", help = "closing stems", action='store_true', required = False)
 		parser.add_argument("--prefix", help = "output", default='output', required = False)
 		parser.add_argument("--os", help = "overlaping stems", action='store_true', required = False)
-		parser.add_argument("--match", help = "find matching motifs", action='store_true', required = False)
-		parser.add_argument("--mismatch", help = "find mismatching motifs", action='store_true', required = False)
+		parser.add_argument("--match", help = "Find matching motifs", action='store_true', required = False)
+		parser.add_argument("--mismatch", help = "Find mismatching motifs", action='store_true', required = False)
 
 		args = parser.parse_args()
 		self.i = args.i
@@ -230,13 +230,13 @@ class Transcript:
 			for i in input_f:
 				if i.startswith(">"):
 					self.id = i.strip()[1:]
-					self.sequence = input_f.next().strip().split()[1]
+					self.sequence = next(input_f).strip().split()[1]
 					s1 = Structure()
-					line = input_f.next().strip().split()	# structure 1
+					line = next(input_f).strip().split()	# structure 1
 					s1.bracket = line[1]
 					s1.str_id = line[0]
 					s2 = Structure()
-					line = input_f.next().strip().split()	# structure 2
+					line = next(input_f).strip().split()	# structure 2
 					s2.bracket = line[1]
 					s2.str_id = line[0]
 
@@ -500,6 +500,7 @@ class Transcript:
 		start = False
 		self.mismatch_positions = []
 		motifs_count = 0 
+		print(s1.pairs)
 		if s1.pairs[0] != 0 and s2.pairs[0] != 0:
 			prev_match_1 = -1
 			prev_match_2 = -1
@@ -532,7 +533,7 @@ class Transcript:
 						self.mismatch_positions.append([pos_start, pos_end])
 						for k in range(pos_start, pos_end + 1):
 							mismatch_string[int(k)] = str(motifs_count)
-					elif n > prev_match_2 + 1 and i > prev_match_1 + 1:
+					elif n > prev_match_2 + 1 and i > prev_match_1 + 1 and prev_match_1 > -1 and prev_match_2 > -1:
 						pos_start = s1.domains_position[prev_match_1 + 1][0] if s1.domains_position[prev_match_1 + 1][0] < s2.domains_position[prev_match_2 + 1][0] else s2.domains_position[prev_match_2 + 1][0]
 						pos_end = s1.domains_position[i - 1][1] if s1.domains_position[i - 1][1] > s2.domains_position[n - 1][1] else s2.domains_position[n - 1][1]
 						shape_start = prev_match_1 + 1 if s1.domains_position[prev_match_1 + 1][0] < s2.domains_position[prev_match_2 + 1][0] else prev_match_2 + 1
@@ -542,6 +543,7 @@ class Transcript:
 						self.mismatch_positions.append([pos_start, pos_end])
 						for k in range(pos_start, pos_end + 1):
 							mismatch_string[int(k)] = str(motifs_count)
+
 					prev_match_2 = n
 					prev_match_1 = i
 		if n == 'x':
